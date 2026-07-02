@@ -4,7 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createSystemClient } from "@/lib/supabase/system";
 import { syncInbox, type SyncResult } from "@/lib/gmail/sync";
-import { sendMonthlyRecap, type RecapSendResult } from "@/lib/recap";
+import {
+  sendMonthlyRecap,
+  buildRecapEmailText,
+  recapSubject,
+  type RecapSendResult,
+} from "@/lib/recap";
+import { computeRecapStats } from "@/lib/data/stats";
+import { generateRecapNarrative } from "@/lib/ai/recap";
+import { aiConfigured } from "@/lib/ai/client";
 
 function parseEmailList(raw: string): string[] {
   return raw
@@ -73,6 +81,38 @@ export async function syncNow(): Promise<SyncResult> {
   revalidatePath("/cases");
   revalidatePath("/settings");
   return result;
+}
+
+export interface RecapPreview {
+  ok: boolean;
+  reason?: string;
+  subject?: string;
+  text?: string;
+  recipients?: string[];
+}
+
+/** Generate the recap email for last month without sending or saving anything. */
+export async function previewRecap(): Promise<RecapPreview> {
+  if (!aiConfigured()) {
+    return { ok: false, reason: "AI is not configured (ANTHROPIC_API_KEY missing)." };
+  }
+  const supabase = await createClient();
+  const lastMonth = new Date();
+  lastMonth.setDate(0);
+  const monthStart = new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
+
+  const [stats, settingsRes] = await Promise.all([
+    computeRecapStats(supabase, monthStart),
+    supabase.from("biscuit_app_settings").select("family_recipient_emails").eq("id", 1).single(),
+  ]);
+  const narrative = await generateRecapNarrative(stats);
+
+  return {
+    ok: true,
+    subject: recapSubject(stats.month),
+    text: buildRecapEmailText(narrative, stats),
+    recipients: settingsRes.data?.family_recipient_emails ?? [],
+  };
 }
 
 /** Send (or resend) the recap for the previous month right now. */

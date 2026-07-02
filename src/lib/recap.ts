@@ -42,6 +42,10 @@ export function buildRecapEmailText(narrative: string, stats: RecapStats): strin
   return lines.join("\n");
 }
 
+export function recapSubject(month: string): string {
+  return `Rowley Family Giving — ${monthLabel(month)} recap`;
+}
+
 export interface RecapSendResult {
   ok: boolean;
   reason?: string;
@@ -86,7 +90,7 @@ export async function sendMonthlyRecap(
   const raw = buildRawMessage({
     from: authed.email,
     to: recipients.join(", "),
-    subject: `Rowley Family Giving — ${monthLabel(stats.month)} recap`,
+    subject: recapSubject(stats.month),
     text,
   });
   await authed.gmail.users.messages.send({ userId: "me", requestBody: { raw } });
