@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  /* Biscuit palette: warm kitchen, dog-biscuit brown, terracotta accent */
+  --color-cream: #faf6ef;
+  --color-surface: #fffdf9;
+  --color-ink: #3d3128;
+  --color-ink-soft: #6b5d51;
+  --color-muted: #96897b;
+  --color-line: #e9dfd0;
+  --color-accent: #c05f33;
+  --color-accent-deep: #a34c26;
+  --color-accent-soft: #f6e3d7;
+  --color-biscuit: #d9a662;
+  --color-biscuit-soft: #f4e6cf;
+  --color-leaf: #5a7d52;
+  --color-leaf-soft: #e4ecdf;
+  --color-denied: #9b5c5c;
+  --color-denied-soft: #f0e0e0;
+  --color-sky: #5c7d9b;
+  --color-sky-soft: #e0e9f0;
+
+  --font-display: var(--font-fraunces), Georgia, serif;
+  --font-body: var(--font-nunito), system-ui, sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(61 49 40 / 0.05), 0 4px 16px rgb(61 49 40 / 0.06);
+}
+
+html {
+  background: var(--color-cream);
+}
+
+body {
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+}
