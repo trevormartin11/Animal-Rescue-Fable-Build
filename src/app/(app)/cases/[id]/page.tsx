@@ -15,7 +15,7 @@ import { Card, CardHeader, StatusBadge } from "@/components/ui";
 import { SubmitButton } from "@/components/SubmitButton";
 import { formatMoney, formatDate, formatDateTime } from "@/lib/format";
 import { denyCase, regenerateDraft, updateCaseDetails, updateCaseStatus } from "@/app/actions/cases";
-import { uploadReceipt } from "@/app/actions/receipts";
+import { uploadReceipt, approveReceipt } from "@/app/actions/receipts";
 import { UploadReceiptForm } from "@/components/UploadReceiptForm";
 import { STATUS_FLOW, STATUS_LABELS, NEXT_ACTION, type CaseStatus } from "@/lib/types";
 
@@ -342,30 +342,66 @@ export default async function CaseDetailPage({
               ) : (
                 <ul className="space-y-2">
                   {receipts.map((r) => (
-                    <li key={r.id} className="flex items-center gap-3 rounded-xl border border-line bg-cream px-4 py-2.5 text-sm">
-                      <div className="min-w-0 flex-1">
-                        {r.storage_path ? (
-                          <a
-                            href={`/api/files/biscuit-receipts/${r.storage_path}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-bold hover:underline truncate block"
-                          >
-                            {r.filename ?? r.email_subject ?? "Receipt"}
-                          </a>
-                        ) : (
-                          <span className="font-bold truncate block">{r.filename ?? r.email_subject ?? "Receipt"}</span>
-                        )}
-                        <div className="text-xs text-muted">
-                          {formatDate(r.received_at)} · {r.source === "email" ? "emailed in" : "uploaded"}
-                          {r.forwarded_to_dext_at
-                            ? " · ✓ sent to Dext"
-                            : r.forward_error
-                              ? ` · Dext: ${r.forward_error}`
-                              : ""}
+                    <li key={r.id} className="rounded-xl border border-line bg-cream px-4 py-3 text-sm space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="min-w-0 flex-1">
+                          {r.storage_path ? (
+                            <a
+                              href={`/api/files/biscuit-receipts/${r.storage_path}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold hover:underline truncate block"
+                            >
+                              {r.filename ?? r.email_subject ?? "Receipt"}
+                            </a>
+                          ) : (
+                            <span className="font-bold truncate block">{r.filename ?? r.email_subject ?? "Receipt"}</span>
+                          )}
+                          <div className="text-xs text-muted">
+                            {formatDate(r.received_at)} · {r.source === "email" ? "emailed in" : "uploaded"}
+                            {r.forwarded_to_dext_at ? " · ✓ sent to Dext" : " · waiting for your approval"}
+                          </div>
                         </div>
+                        {r.forwarded_to_dext_at && r.amount != null && (
+                          <div className="font-bold shrink-0">{formatMoney(Number(r.amount))}</div>
+                        )}
                       </div>
-                      {r.amount != null && <div className="font-bold shrink-0">{formatMoney(Number(r.amount))}</div>}
+
+                      {!r.forwarded_to_dext_at && (
+                        <form
+                          action={approveReceipt.bind(null, r.id)}
+                          className="flex flex-wrap items-center gap-2 border-t border-line pt-2"
+                        >
+                          <label className="text-xs font-bold text-ink-soft" htmlFor={`amt-${r.id}`}>
+                            Amount we're paying
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted text-sm">$</span>
+                            <input
+                              id={`amt-${r.id}`}
+                              name="amount"
+                              type="number"
+                              step="0.01"
+                              min="0.01"
+                              required
+                              defaultValue={r.amount != null ? Number(r.amount) : undefined}
+                              placeholder="0.00"
+                              className="w-32 rounded-xl border border-line bg-white pl-7 pr-3 py-1.5 text-sm outline-none focus:border-accent"
+                            />
+                          </div>
+                          <SubmitButton pendingText="Sending…">Approve → Dext</SubmitButton>
+                          {r.forward_error ? (
+                            <span className="text-xs font-semibold text-denied w-full">
+                              Last attempt failed: {r.forward_error}
+                            </span>
+                          ) : r.amount != null ? (
+                            <span className="text-xs text-muted w-full">
+                              {formatMoney(Number(r.amount))} was detected on the receipt — edit it if the
+                              trust is only covering part.
+                            </span>
+                          ) : null}
+                        </form>
+                      )}
                     </li>
                   ))}
                 </ul>

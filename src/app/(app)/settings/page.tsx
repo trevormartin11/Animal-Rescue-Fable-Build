@@ -60,7 +60,7 @@ export default async function SettingsPage({
               </p>
               <p className="text-ink-soft">
                 Biscuit checks this inbox automatically: PACC 911 requests become cases with a
-                reply drafted in Gmail, and emailed receipts are filed and forwarded to Dext.
+                reply drafted in Gmail, and emailed receipts are filed and staged for your approval.
                 Last check: {formatDateTime(settings?.last_synced_at)}.
               </p>
               <form action={disconnectGmail}>
@@ -162,7 +162,7 @@ export default async function SettingsPage({
               placeholder="yourname@dext.cc"
               className="w-full rounded-xl border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
-            <span className="text-xs text-muted">Every receipt is forwarded here for the accountant.</span>
+            <span className="text-xs text-muted">Approved receipts are emailed here for the accountant — you confirm each amount first.</span>
           </label>
           <label className="block">
             <span className="block font-bold text-ink-soft mb-1">Email signature</span>

@@ -23,8 +23,8 @@ export default async function DashboardPage() {
       .order("requested_at", { ascending: true }),
     supabase
       .from("biscuit_receipts")
-      .select("id, email_from, email_subject, filename, received_at")
-      .is("case_id", null)
+      .select("id, case_id, amount, email_from, email_subject, filename, received_at, cases:biscuit_cases(animal_name)")
+      .is("forwarded_to_dext_at", null)
       .order("received_at", { ascending: false }),
     supabase
       .from("biscuit_activity_log")
@@ -36,7 +36,9 @@ export default async function DashboardPage() {
 
   const settings = settingsRes.data;
   const openCases = openCasesRes.data ?? [];
-  const unmatched = unmatchedRes.data ?? [];
+  const pendingReceipts = unmatchedRes.data ?? [];
+  const unmatched = pendingReceipts.filter((r) => !r.case_id);
+  const staged = pendingReceipts.filter((r) => r.case_id);
   const activity = activityRes.data ?? [];
 
   const warnings: { text: string; href: string }[] = [];
@@ -114,7 +116,7 @@ export default async function DashboardPage() {
           title="Needs attention"
           action={<LinkButton href="/cases" variant="secondary">All cases</LinkButton>}
         />
-        {openCases.length === 0 && unmatched.length === 0 ? (
+        {openCases.length === 0 && unmatched.length === 0 && staged.length === 0 ? (
           <EmptyState
             title="Nothing waiting on you"
             hint="New PACC 911 requests will appear here automatically."
@@ -146,6 +148,38 @@ export default async function DashboardPage() {
                     <div className="text-right shrink-0">
                       <div className="font-bold">{formatMoney(c.amount != null ? Number(c.amount) : null)}</div>
                       <div className="text-xs text-muted">{timeAgo(c.requested_at)}</div>
+                    </div>
+                    <ArrowRight size={16} className="text-muted shrink-0" />
+                  </Link>
+                </li>
+              );
+            })}
+            {staged.map((r) => {
+              const rCase = Array.isArray(r.cases) ? r.cases[0] : r.cases;
+              return (
+                <li key={r.id}>
+                  <Link
+                    href={`/cases/${r.case_id}`}
+                    className="flex items-center gap-4 px-5 py-3.5 hover:bg-accent-soft/30 transition-colors"
+                  >
+                    <Inbox size={18} className="text-biscuit shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold">
+                        Receipt awaiting your approval
+                        {rCase?.animal_name ? (
+                          <span className="font-normal text-ink-soft"> · {rCase.animal_name}</span>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 text-sm text-ink-soft truncate">
+                        Confirm the amount to send it to Dext —{" "}
+                        {r.email_subject || r.filename || "receipt"}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {r.amount != null && (
+                        <div className="font-bold">{formatMoney(Number(r.amount))}</div>
+                      )}
+                      <div className="text-xs text-muted">{timeAgo(r.received_at)}</div>
                     </div>
                     <ArrowRight size={16} className="text-muted shrink-0" />
                   </Link>
