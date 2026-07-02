@@ -24,7 +24,7 @@ export default function NewCasePage() {
               id="from"
               name="from"
               type="text"
-              placeholder="e.g. Barry — barry@pacc911.org"
+              placeholder="e.g. Bari — bari@pacc911.org"
               className="w-full rounded-xl border border-line bg-white px-4 py-2.5 outline-none focus:border-accent"
             />
           </div>

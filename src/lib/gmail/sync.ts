@@ -99,7 +99,7 @@ async function log(
 }
 
 /**
- * Create the Gmail draft reply to the owner (BCC Barry) and record it on the case.
+ * Create the Gmail draft reply to the owner (BCC Bari) and record it on the case.
  */
 export async function createOwnerGmailDraft(
   gmail: gmail_v1.Gmail,
@@ -244,7 +244,7 @@ async function handleCaseRequest(
     `From ${msg.from}: ${analysis.animalName ?? "animal"} — ${analysis.situation ?? ""}`.slice(0, 500)
   );
 
-  // Save any photos included in Barry's email
+  // Save any photos included in the request email
   for (const att of msg.attachments) {
     if (!att.contentType.startsWith("image/") || att.size > MAX_ATTACHMENT_BYTES) continue;
     try {

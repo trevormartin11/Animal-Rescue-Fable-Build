@@ -6,7 +6,7 @@ arrive from [PACC 911](https://pacc911.org) asking for help with a vet bill.
 
 ## What it does
 
-1. **Watches a dedicated Gmail inbox.** When Barry or Doug from PACC 911 emails a
+1. **Watches a dedicated Gmail inbox.** When Bari or Doug from PACC 911 emails a
    request, Biscuit reads it, extracts the case (animal, owner, vet, cost), and
    creates it automatically.
 2. **Queues the reply.** Every new case gets a warm, personalized introduction

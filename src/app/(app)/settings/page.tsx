@@ -137,7 +137,7 @@ export default async function SettingsPage({
             <input
               name="pacc_senders"
               defaultValue={(settings?.pacc_sender_emails ?? []).join(", ")}
-              placeholder="barry@pacc911.org, doug@pacc911.org"
+              placeholder="bari@pacc911.org, doug@pacc911.org"
               className="w-full rounded-xl border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
             <span className="text-xs text-muted">Comma-separated. Helps Biscuit recognize case requests.</span>
@@ -148,10 +148,10 @@ export default async function SettingsPage({
               name="barry_bcc"
               type="email"
               defaultValue={settings?.barry_bcc_email ?? ""}
-              placeholder="barry@pacc911.org"
+              placeholder="bari@pacc911.org"
               className="w-full rounded-xl border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
-            <span className="text-xs text-muted">Barry gets a copy of every intro email so PACC 911 stays in the loop.</span>
+            <span className="text-xs text-muted">Bari gets a copy of every intro email so PACC 911 stays in the loop.</span>
           </label>
           <label className="block">
             <span className="block font-bold text-ink-soft mb-1">Dext accounting email</span>
