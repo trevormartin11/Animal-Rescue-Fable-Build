@@ -2,7 +2,7 @@ import { Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardHeader, PageHeader, StatCard } from "@/components/ui";
 import { MonthlyGivingChart } from "@/components/MonthlyGivingChart";
-import { SendRecapButton } from "@/components/SendRecapButton";
+import { RecapControls } from "@/components/RecapControls";
 import { computeGivingStats } from "@/lib/data/stats";
 import { formatMoney, formatDate } from "@/lib/format";
 import { monthLabel } from "@/lib/recap";
@@ -99,7 +99,7 @@ export default async function ReportsPage() {
                 } ${settings?.family_recipient_emails?.length === 1 ? "person" : "people"}.`
               : "Auto-send is off — recaps only go out when you send one manually. Turn it on in Settings."}
           </p>
-          <SendRecapButton />
+          <RecapControls />
           {lastRecap && (
             <div className="rounded-xl border border-line bg-cream p-4">
               <div className="text-sm font-bold mb-1">

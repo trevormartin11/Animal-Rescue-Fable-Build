@@ -99,7 +99,7 @@ async function log(
 }
 
 /**
- * Create the Gmail draft reply to the owner (BCC Barry) and record it on the case.
+ * Create the Gmail draft reply to the owner (BCC Bari) and record it on the case.
  */
 export async function createOwnerGmailDraft(
   gmail: gmail_v1.Gmail,
@@ -160,7 +160,7 @@ export async function createOwnerGmailDraft(
 }
 
 /**
- * Forward a receipt to the Dext accounting address.
+ * Send an approved receipt to the Dext accounting address.
  */
 export async function forwardToDext(
   gmail: gmail_v1.Gmail,
@@ -173,7 +173,7 @@ export async function forwardToDext(
   const raw = buildRawMessage({
     from: connectedEmail,
     to: dextEmail,
-    subject: `Fwd: ${subject}`,
+    subject,
     text: bodyText,
     attachments,
   });
@@ -244,7 +244,7 @@ async function handleCaseRequest(
     `From ${msg.from}: ${analysis.animalName ?? "animal"} — ${analysis.situation ?? ""}`.slice(0, 500)
   );
 
-  // Save any photos included in Barry's email
+  // Save any photos included in the request email
   for (const att of msg.attachments) {
     if (!att.contentType.startsWith("image/") || att.size > MAX_ATTACHMENT_BYTES) continue;
     try {
@@ -347,28 +347,7 @@ async function handleReceipt(
     storagePath = null;
   }
 
-  // Forward to Dext for accounting
-  let forwardedAt: string | null = null;
-  let forwardError: string | null = null;
-  if (settings.dext_email) {
-    try {
-      await forwardToDext(
-        gmail,
-        connectedEmail,
-        settings.dext_email,
-        msg.subject || "Receipt",
-        `Receipt forwarded automatically by Biscuit.\n\nOriginal sender: ${msg.from}\n\n${msg.bodyText.slice(0, 4000)}`,
-        files
-      );
-      forwardedAt = new Date().toISOString();
-    } catch (e) {
-      forwardError = e instanceof Error ? e.message : String(e);
-      result.errors.push(`dext forward: ${forwardError}`);
-    }
-  } else {
-    forwardError = "No Dext email configured";
-  }
-
+  // Staged for Chelsea's approval — nothing goes to Dext until she confirms the amount
   await supabase.from("biscuit_receipts").insert({
     case_id: caseId,
     source: "email",
@@ -379,8 +358,8 @@ async function handleReceipt(
     gmail_message_id: msg.id,
     email_subject: msg.subject,
     email_from: msg.from,
-    forwarded_to_dext_at: forwardedAt,
-    forward_error: forwardError,
+    forwarded_to_dext_at: null,
+    forward_error: null,
     received_at: msg.date ?? new Date().toISOString(),
   });
   result.receipts++;
@@ -390,7 +369,7 @@ async function handleReceipt(
       supabase,
       caseId,
       "receipt_filed",
-      `${receipt.merchant ?? msg.from}${receipt.amount != null ? ` — $${receipt.amount}` : ""}${forwardedAt ? " · forwarded to Dext" : forwardError ? ` · Dext forward failed: ${forwardError}` : ""}`
+      `${receipt.merchant ?? msg.from}${receipt.amount != null ? ` — $${receipt.amount} detected` : ""} · staged for approval before Dext`
     );
     // A receipt usually means the bill was paid — advance the case if it was waiting on payment
     const { data: c } = await supabase.from("biscuit_cases").select("status").eq("id", caseId).single();

@@ -46,10 +46,10 @@ export function UploadReceiptForm({
         </button>
       </div>
       <p className="text-xs text-muted">
-        Screenshots and PDFs are filed with this case and forwarded to Dext automatically.
+        Screenshots and PDFs are filed with this case and staged — you approve the amount before anything goes to Dext.
       </p>
       {state?.error ? <p className="text-xs font-semibold text-denied">{state.error}</p> : null}
-      {state?.ok ? <p className="text-xs font-semibold text-leaf">Receipt filed ✓</p> : null}
+      {state?.ok ? <p className="text-xs font-semibold text-leaf">Receipt filed — approve it below to send to Dext ✓</p> : null}
     </form>
   );
 }

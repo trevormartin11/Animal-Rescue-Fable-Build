@@ -4,8 +4,12 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthorizedGmail } from "@/lib/gmail/client";
 import { forwardToDext } from "@/lib/gmail/sync";
+import { formatMoney } from "@/lib/format";
 
-/** Upload a receipt screenshot for a case; auto-forwards to Dext when possible. */
+/**
+ * Upload a receipt screenshot for a case. It's filed and staged —
+ * Chelsea approves the amount before anything goes to Dext.
+ */
 export async function uploadReceipt(
   _prev: { error?: string; ok?: boolean } | null,
   formData: FormData
@@ -28,39 +32,6 @@ export async function uploadReceipt(
     .upload(path, buf, { contentType: file.type || "application/octet-stream" });
   if (upErr) return { error: `Upload failed: ${upErr.message}` };
 
-  // Forward to Dext
-  const { data: settings } = await supabase.from("biscuit_app_settings").select("*").eq("id", 1).single();
-  const { data: c } = await supabase
-    .from("biscuit_cases")
-    .select("animal_name")
-    .eq("id", caseId)
-    .maybeSingle();
-
-  let forwardedAt: string | null = null;
-  let forwardError: string | null = null;
-  if (settings?.dext_email) {
-    const authed = await getAuthorizedGmail(supabase);
-    if (authed) {
-      try {
-        await forwardToDext(
-          authed.gmail,
-          authed.email,
-          settings.dext_email,
-          `Receipt — ${c?.animal_name ?? "rescue case"}`,
-          "Receipt uploaded manually in Biscuit and forwarded for accounting.",
-          [{ filename: safeName, contentType: file.type || "application/octet-stream", data: buf }]
-        );
-        forwardedAt = new Date().toISOString();
-      } catch (e) {
-        forwardError = e instanceof Error ? e.message : String(e);
-      }
-    } else {
-      forwardError = "Gmail not connected";
-    }
-  } else {
-    forwardError = "No Dext email configured";
-  }
-
   await supabase.from("biscuit_receipts").insert({
     case_id: caseId,
     source: "upload",
@@ -68,17 +39,16 @@ export async function uploadReceipt(
     storage_path: path,
     filename: file.name,
     content_type: file.type || null,
-    forwarded_to_dext_at: forwardedAt,
-    forward_error: forwardError,
   });
 
   await supabase.from("biscuit_activity_log").insert({
     case_id: caseId,
     event: "receipt_uploaded",
-    detail: `${file.name}${forwardedAt ? " · forwarded to Dext" : forwardError ? ` · Dext: ${forwardError}` : ""}`,
+    detail: `${file.name} · staged for approval before Dext`,
   });
 
   revalidatePath(`/cases/${caseId}`);
+  revalidatePath("/");
   return { ok: true };
 }
 
@@ -91,60 +61,112 @@ export async function assignReceiptToCase(receiptId: string, formData: FormData)
   await supabase.from("biscuit_activity_log").insert({
     case_id: caseId,
     event: "receipt_filed",
-    detail: "Receipt assigned manually",
+    detail: "Receipt assigned manually · staged for approval before Dext",
   });
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");
   revalidatePath("/");
 }
 
-/** Retry a failed Dext forward. */
-export async function retryDextForward(receiptId: string) {
+/**
+ * Chelsea's approval: she confirms (or edits) the amount — e.g. a $1,000
+ * bill of which the family pays $500 — and the receipt goes to Dext with
+ * that approved amount. Also serves as the retry after a failed send.
+ */
+export async function approveReceipt(receiptId: string, formData: FormData) {
+  const amountRaw = String(formData.get("amount") ?? "").replace(/[$,]/g, "").trim();
+  const amount = Number(amountRaw);
+  if (!amountRaw || !Number.isFinite(amount) || amount <= 0) return;
+
   const supabase = await createClient();
-  const { data: r } = await supabase.from("biscuit_receipts").select("*").eq("id", receiptId).single();
+  const { data: r } = await supabase
+    .from("biscuit_receipts")
+    .select("*")
+    .eq("id", receiptId)
+    .maybeSingle();
   if (!r || r.forwarded_to_dext_at) return;
 
-  const { data: settings } = await supabase.from("biscuit_app_settings").select("*").eq("id", 1).single();
-  const authed = await getAuthorizedGmail(supabase);
-  if (!settings?.dext_email || !authed) return;
+  const setError = async (msg: string) => {
+    await supabase
+      .from("biscuit_receipts")
+      .update({ amount, forward_error: msg })
+      .eq("id", receiptId);
+    if (r.case_id) revalidatePath(`/cases/${r.case_id}`);
+    revalidatePath("/");
+  };
 
-  let data: Buffer | null = null;
+  const { data: settings } = await supabase
+    .from("biscuit_app_settings")
+    .select("dext_email")
+    .eq("id", 1)
+    .single();
+  if (!settings?.dext_email) return setError("No Dext email configured — add it in Settings");
+
+  const authed = await getAuthorizedGmail(supabase);
+  if (!authed) return setError("Gmail not connected");
+
+  let fileData: Buffer | null = null;
   if (r.storage_path) {
-    const { data: blob } = await supabase.storage.from("biscuit-receipts").download(r.storage_path);
-    if (blob) data = Buffer.from(await blob.arrayBuffer());
+    const { data: blob } = await supabase.storage
+      .from("biscuit-receipts")
+      .download(r.storage_path);
+    if (blob) fileData = Buffer.from(await blob.arrayBuffer());
   }
-  if (!data) return;
+  if (!fileData) return setError("Receipt file is missing from storage");
+
+  let animal: string | null = null;
+  if (r.case_id) {
+    const { data: c } = await supabase
+      .from("biscuit_cases")
+      .select("animal_name")
+      .eq("id", r.case_id)
+      .maybeSingle();
+    animal = c?.animal_name ?? null;
+  }
+
+  const approved = formatMoney(amount);
+  const detectedNote =
+    r.amount != null && Number(r.amount) !== amount
+      ? `\nReceipt document total: ${formatMoney(Number(r.amount))} (the trust is covering ${approved} of it).`
+      : "";
 
   try {
     await forwardToDext(
       authed.gmail,
       authed.email,
       settings.dext_email,
-      r.email_subject ?? `Receipt — ${r.filename ?? "rescue case"}`,
-      "Receipt forwarded by Biscuit for accounting.",
+      `Receipt — ${animal ?? r.filename ?? "rescue case"} — ${approved}`,
+      [
+        `Receipt approved in Biscuit by the Rowley Family Charitable Giving Trust.`,
+        ``,
+        `Approved amount: ${approved}${detectedNote}`,
+        animal ? `Case: ${animal}` : null,
+        r.email_from ? `Original sender: ${r.email_from}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
       [
         {
           filename: r.filename ?? "receipt",
           contentType: r.content_type ?? "application/octet-stream",
-          data,
+          data: fileData,
         },
       ]
     );
-    await supabase
-      .from("biscuit_receipts")
-      .update({ forwarded_to_dext_at: new Date().toISOString(), forward_error: null })
-      .eq("id", receiptId);
-    await supabase.from("biscuit_activity_log").insert({
-      case_id: r.case_id,
-      event: "receipt_forwarded",
-      detail: "Forwarded to Dext (retry)",
-    });
   } catch (e) {
-    await supabase
-      .from("biscuit_receipts")
-      .update({ forward_error: e instanceof Error ? e.message : String(e) })
-      .eq("id", receiptId);
+    return setError(e instanceof Error ? e.message : String(e));
   }
+
+  await supabase
+    .from("biscuit_receipts")
+    .update({ amount, forwarded_to_dext_at: new Date().toISOString(), forward_error: null })
+    .eq("id", receiptId);
+  await supabase.from("biscuit_activity_log").insert({
+    case_id: r.case_id,
+    event: "receipt_approved",
+    detail: `${approved} approved and sent to Dext${animal ? ` (${animal})` : ""}`,
+  });
+
   if (r.case_id) revalidatePath(`/cases/${r.case_id}`);
   revalidatePath("/");
 }

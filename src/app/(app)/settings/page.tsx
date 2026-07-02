@@ -60,7 +60,7 @@ export default async function SettingsPage({
               </p>
               <p className="text-ink-soft">
                 Biscuit checks this inbox automatically: PACC 911 requests become cases with a
-                reply drafted in Gmail, and emailed receipts are filed and forwarded to Dext.
+                reply drafted in Gmail, and emailed receipts are filed and staged for your approval.
                 Last check: {formatDateTime(settings?.last_synced_at)}.
               </p>
               <form action={disconnectGmail}>
@@ -100,7 +100,14 @@ export default async function SettingsPage({
                     <a className="text-accent-deep font-bold hover:underline" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">
                       Google Cloud Console
                     </a>
-                    , create a project, enable the <strong>Gmail API</strong>, and configure the OAuth consent screen (External, then add the rescue Gmail address as a test user).
+                    , create a project, enable the <strong>Gmail API</strong>, and configure the OAuth consent screen (External).
+                  </li>
+                  <li>
+                    <strong>Important:</strong> on the consent screen's Audience page, click{" "}
+                    <strong>“Publish app”</strong> so its status is <em>In production</em> — if it stays
+                    in <em>Testing</em>, Google expires the connection every 7 days. No verification
+                    needed: when connecting you'll click through an “unverified app” warning once
+                    (Advanced → continue). That's expected for a private app like this.
                   </li>
                   <li>
                     Create an <strong>OAuth client ID</strong> (type: Web application) with redirect URI:{" "}
@@ -130,7 +137,7 @@ export default async function SettingsPage({
             <input
               name="pacc_senders"
               defaultValue={(settings?.pacc_sender_emails ?? []).join(", ")}
-              placeholder="barry@pacc911.org, doug@pacc911.org"
+              placeholder="bari@pacc911.org, doug@pacc911.org"
               className="w-full rounded-xl border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
             <span className="text-xs text-muted">Comma-separated. Helps Biscuit recognize case requests.</span>
@@ -141,10 +148,10 @@ export default async function SettingsPage({
               name="barry_bcc"
               type="email"
               defaultValue={settings?.barry_bcc_email ?? ""}
-              placeholder="barry@pacc911.org"
+              placeholder="bari@pacc911.org"
               className="w-full rounded-xl border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
-            <span className="text-xs text-muted">Barry gets a copy of every intro email so PACC 911 stays in the loop.</span>
+            <span className="text-xs text-muted">Bari gets a copy of every intro email so PACC 911 stays in the loop.</span>
           </label>
           <label className="block">
             <span className="block font-bold text-ink-soft mb-1">Dext accounting email</span>
@@ -155,7 +162,7 @@ export default async function SettingsPage({
               placeholder="yourname@dext.cc"
               className="w-full rounded-xl border border-line bg-white px-3 py-2 outline-none focus:border-accent"
             />
-            <span className="text-xs text-muted">Every receipt is forwarded here for the accountant.</span>
+            <span className="text-xs text-muted">Approved receipts are emailed here for the accountant — you confirm each amount first.</span>
           </label>
           <label className="block">
             <span className="block font-bold text-ink-soft mb-1">Email signature</span>

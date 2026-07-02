@@ -92,7 +92,7 @@ export async function analyzeInboundEmail(
       "You analyze emails arriving at a dedicated inbox for the Rowley Family Charitable Giving Trust,",
       "which funds veterinary care for rescue animals referred by PACC 911 (an animal rescue organization).",
       "",
-      "Typical case requests come from PACC 911 coordinators (often Barry or Doug) and describe an animal,",
+      "Typical case requests come from PACC 911 coordinators (often Bari or Doug) and describe an animal,",
       "what care it needs, roughly what it costs, and the owner's contact info.",
       "Receipts arrive from vet clinics or payment processors after the family pays for care.",
       "",
