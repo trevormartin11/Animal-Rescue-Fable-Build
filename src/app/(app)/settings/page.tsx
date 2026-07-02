@@ -100,7 +100,14 @@ export default async function SettingsPage({
                     <a className="text-accent-deep font-bold hover:underline" href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">
                       Google Cloud Console
                     </a>
-                    , create a project, enable the <strong>Gmail API</strong>, and configure the OAuth consent screen (External, then add the rescue Gmail address as a test user).
+                    , create a project, enable the <strong>Gmail API</strong>, and configure the OAuth consent screen (External).
+                  </li>
+                  <li>
+                    <strong>Important:</strong> on the consent screen's Audience page, click{" "}
+                    <strong>“Publish app”</strong> so its status is <em>In production</em> — if it stays
+                    in <em>Testing</em>, Google expires the connection every 7 days. No verification
+                    needed: when connecting you'll click through an “unverified app” warning once
+                    (Advanced → continue). That's expected for a private app like this.
                   </li>
                   <li>
                     Create an <strong>OAuth client ID</strong> (type: Web application) with redirect URI:{" "}
